@@ -14,9 +14,7 @@ static void handler(int sig_no, siginfo_t *info, void *cntx){
     unsigned long pc = context->uc_mcontext.gregs[REG_RIP];
     
     printf("Illegal instruction at 0x%lx value 0x%x\n", pc, *(int*)pc);
-    context->uc_mcontext.gregs[REG_RIP] = pc+1;
-
-    
+    context->uc_mcontext.gregs[REG_RIP] = pc+1;    
 }
 
 
