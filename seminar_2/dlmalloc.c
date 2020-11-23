@@ -29,6 +29,9 @@ struct head {
 struct head *arena = NULL;  
 struct head *flist;
 
+void sanity();
+void printArena();
+void insert();
 
 
 struct head *after(struct head *block) {
@@ -41,22 +44,23 @@ struct head *before(struct head *block) {
 
 struct head *split(struct head *block, int size) {
 
-  int rsize = block->size - (sizeof(struct head) + size); 
+  int rsize = block->size - (HEAD + size); 
   block->size = rsize; 
 
   struct head *splt = after(block);
   splt->bsize = block->size;
   splt->bfree = block->free;
   splt->size = size;
-  splt->free = FALSE;
+  splt->free = TRUE;
   
   struct head *aft = after(splt);
   aft->bsize = splt->size;
+  aft->bfree = splt->free;
+
+  insert(splt);
 
   return splt;
 }
-
-
 
 struct head *new() {
 
@@ -82,6 +86,7 @@ struct head *new() {
   new->bsize = 0;
   new->free= TRUE;
   new->size = size;
+  new->prev = NULL;
   
   struct head *sentinel = after(new);
 
@@ -102,8 +107,7 @@ void detach(struct head *block) {
 
   if (block->next != NULL)
       block->next->prev = block->prev;
-    
-    
+     
   if (block->prev != NULL)
       block->prev->next = block->next;
   else
@@ -113,14 +117,17 @@ void detach(struct head *block) {
 
  void insert(struct head *block) {
 
-  block->next = flist;
-  block->prev = flist->prev;
+    if(block != flist){
 
-  if (flist != NULL)
-    flist->prev = block;
-  
-     
-  flist = block;
+        block->next = flist;
+        block->prev = flist->prev;
+
+        if (flist != NULL)
+          flist->prev = block;
+        
+          
+        flist = block;
+    }
 } 
 
 int adjust(int request){
@@ -142,6 +149,10 @@ struct head *find(int size){
   struct head *iterator = flist;
 
   do{
+
+      if (iterator->size == size)
+          return iterator;
+     
       if (iterator->size >= LIMIT(size))   
          return split(iterator, size);
        
@@ -157,16 +168,55 @@ void *dalloc(size_t request) {
 
   if( request <= 0 )
     return NULL;
-  
+
   int size = adjust(request);
 
   struct head *taken = find(size);
 
+  sanity();
+
   if (taken == NULL)
     return NULL;
-  else
+  else{
+    detach(taken);
+    taken->free = FALSE;
+    after(taken)->bfree = FALSE;
     return HIDE(taken);
+  }
+}
 
+struct head *merge(struct head *block) {
+
+  assert(block->free);
+  struct head *aft = after(block);
+  if (block->bfree) {
+    /* unlink the block before */
+    
+    struct head *bef = before(block);
+    assert(bef->free);
+    detach(block);
+    assert(block->bsize == bef->size);
+
+    /* calculate and set the total size of the merged blocks */    
+    bef->size += block->size + HEAD;
+
+    /* update the block after the merged blocks*/
+    aft->bsize = bef->size;
+
+    assert(after(bef)->bsize == bef->size);
+    /* continue with the merged block */
+    block = bef;
+  }
+    
+  if(aft->free) {
+    /* unlink the block  */
+      detach(aft);
+    /* calculate and set the total size of merged blocks */
+      block->size = block->size + aft->size + HEAD;
+    /* update the block after the merged block */
+      after(aft)->bsize = block->size;     
+  }
+  return block;
 }
 
 
@@ -176,25 +226,30 @@ void dfree(void *memory) {
 
     struct head *block = MAGIC(memory);
 
+    block->free = TRUE;
+    block = merge(block);
+
     struct head *aft = after(block);
   
-    block->free = TRUE;
     aft->bfree = TRUE;
     aft->bsize = block->size;
     
     insert(block);
   }
 
+  sanity();
+
   return;
 }
 
 void printFlist(){
 
+  
   struct head *iterator = flist;
 
   int index = 0;
 
-  printf("Complete free list\n\n");
+  printf("\nComplete free list\n\n");
 
   do{
     printf("Index %d, address %p, bfree %d, bsize %d, size %d, next %p, prev %p\n",index, iterator, iterator->bfree, iterator->bsize, iterator->size, iterator->next, iterator->prev);
@@ -204,50 +259,171 @@ void printFlist(){
 
   }while(iterator != NULL);
 
+  sanity();
+
+}
+
+void printArena(){
+
+  struct head *iterator = arena;
+
+  int index = 0;
+
+  printf("\nComplete Arena\n\n");
+
+  do{
+    printf("Index %d, address %p, bfree %d, bsize %d, size %d\n",index, iterator, iterator->bfree, iterator->bsize, iterator->size);
+    iterator = after(iterator);
+    index++;
+
+  }while(iterator->size != 0);
+
+  printf("Index %d, address %p, bfree %d, bsize %d, size %d\n",index, iterator, iterator->bfree, iterator->bsize, iterator->size);
+  sanity();
+
+}
+
+void sanity(){
+
+  struct head *iterator = flist;
+
+  assert(flist->prev == NULL);
+
+  while (iterator->next != NULL){
+    assert(iterator->free == TRUE);
+    assert(iterator->next->prev == iterator);
+    assert((iterator->size % ALIGN) == 0);
+
+    iterator = iterator->next;
+  }
+
+  iterator = arena;
+  struct head *next;
+
+  while (iterator->size != 0){
+
+    next = after(iterator);
+
+    
+    assert(iterator->size == next->bsize);
+    assert(iterator->free == next->bfree);
+    assert((iterator->size % ALIGN) == 0);
+    assert((iterator->bsize % ALIGN) == 0);
+    assert((next->size % ALIGN) == 0);
+    assert((next->bsize % ALIGN) == 0);
+
+    iterator = next;
+  }
+}
+
+int countFlist(){
+
+  int size = 1;
+
+  struct head *iterator = flist;
+
+  while (iterator->next != NULL){
+    size++;
+    iterator = iterator->next;
+  }
+  
+  return size;
+}
+
+double countAverageBlockSize(){
+
+  double size = 0;
+
+  struct head *iterator = flist;
+
+  do{
+
+    size += iterator->size;
+    iterator = iterator->next;
+
+  }while (iterator != NULL);
+    
+  
+  
+  return size/countFlist();
+}
+
+void init(){
+  flist = new();
+}
+
+
+
+
+#include <time.h>
+//#include "dlmalloc.h"
+
+
+
+
+#define MINI 8
+#define MAX 1024
+#define REQUESTS 10
+
+
+
+int *stack[REQUESTS];
+int TOP = -1;
+
+
+
+void push(void *memory){
+   stack[++TOP] = memory;
+}
+
+void* pop(){
+    return stack[TOP--];
+}
+
+void requests (int *samples){
+
+    srand(time(NULL));
+
+    for (size_t i = 0; i < REQUESTS; i++){
+        samples[i] = rand() % MAX;
+
+        while (samples[i] % MINI != 0)
+            samples[i]++;    
+    }
+}
+
+void bench(int *samples){
+
+    void *memory;
+  
+    printf("listsize avgblocksize\n");
+
+    for (size_t i = 0; i < REQUESTS; i++){
+
+        memory = dalloc(samples[i]);
+   
+        push(memory);
+       // dfree(memory);
+
+       if((samples[i] % 100 < 90) && TOP != -1)
+           dfree(pop());
+        
+
+        printFlist();
+        printArena();
+        printf("%d %.2f\n", countFlist(), countAverageBlockSize());
+    }
+
 }
 
 
 
 int main(){
 
-  flist = new();
-
-  int size = 100;
-
-  
-  
-  printFlist();
-
-  
-
-  void* memory = dalloc(100);
-  void* memory2 = dalloc(10000);
-
-  dfree(memory);
-  dfree(memory2);
-
-  printFlist();
-
-
-
-  struct head *test = split(arena, 100);
-  struct head *afterTest = after(test);
-
-  assert(MIN(0) == 8);
-  assert(MIN(9) == 9);
-  assert(LIMIT(0) == 32);
-  assert(LIMIT(8) == 40);
-  assert(test->size == size);
-  assert(test->free == FALSE);
-  assert(afterTest->bsize == test->size);
-  assert(adjust(5) == 8);
-  assert(adjust(17) == 24);
-  assert(adjust(123) == 128);
-
-
-
-
-  printf("\nAll assertions passed!!\n");
-
-  return 0;
+    init();
+    int req[REQUESTS]; 
+    requests(req);  
+    bench(req);
+         
+    return 0;
 }

@@ -1,9 +1,13 @@
 #ifndef DLMALLOC
 #define DLMALLOC
 
-#include <stdint.h>
+#include <stddef.h>
 
-void *dalloc(size_t);
-void dfree(void *memory;)
+void *dalloc(size_t request);
+void dfree(void *memory);
+void init();
+int countFlist();
+double countAverageBlockSize();
+void printFlist();
 
 #endif
