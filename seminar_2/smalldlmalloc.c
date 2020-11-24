@@ -8,14 +8,15 @@
 
 #define TRUE 1
 #define FALSE 0 
-#define ALIGN 8 //Size of an adress. 8 bytes.
+#define ALIGN 8 //Size of an address. 8 bytes.
 #define HEAD  (sizeof(struct head))
+#define THEAD  (sizeof(struct thead))
 #define ARENA (64*1024) // The size of the heap.
 
-#define MIN(size) (((size)>(8))?(size):(8)) // The minimum size of a block. It can not be smaller than 8 bytes.
-#define LIMIT(size) (MIN(0) + HEAD + size) // The smallest block we will split i.e. 40 bytes. It is 40 + 24 bytes large(block + header) which can be divided into two eight size blocks((24+8)+(24+8)) 
-#define MAGIC(memory) ((struct head*)memory - 1) // Retreiving the head one head block (24 bytes) behind the block.
-#define HIDE(block) (void*)((struct head* )block + 1) // Hiding the head behind the block of data.
+#define MIN(size) (((size)>(16))?(size):(16)) // The minimum size of a block. It can not be smaller than 8 bytes.
+#define LIMIT(size) (MIN(0) + THEAD + size) // The smallest block we will split i.e. 40 bytes. It is (40 + 8) bytes large(block + theader) which can be divided into two sixteen size blocks((16+8)+(16+8)) 
+#define MAGIC(memory) ((struct thead*)memory - 1) // Retreiving the head one head block (24 bytes) behind the block.
+#define HIDE(block) (void*)((struct thead* )block + 1) // Hiding the head behind the block of data.
 
 
 struct head {
@@ -27,7 +28,14 @@ struct head {
   struct head *prev;   
 };
 
-struct head *arena = NULL;  
+struct thead{
+  uint16_t bfree;  
+  uint16_t bsize;  
+  uint16_t free;    
+  uint16_t size;   
+};
+
+struct thead *arena = NULL;  
 struct head *flist;
 
 void sanity();
@@ -35,31 +43,33 @@ void printArena();
 void insert();
 
 
-struct head *after(struct head *block) {
-  return (struct head*)((char*)(block) + HEAD + block->size); 
+struct thead *after(struct thead *block) {
+  return (struct thead*)((char*)(block) + THEAD + block->size); 
 }
 
-struct head *before(struct head *block) {
-  return (struct head*)((char*)(block) -(HEAD + block->bsize));
+struct thead *before(struct thead *block) {
+  return (struct thead*)((char*)(block) -(THEAD + block->bsize));
 }
 
-struct head *split(struct head *block, int size) {
+struct head *split(struct thead *block, int size) {
 
   assert(block->free);
-  int rsize = block->size - (HEAD + size); 
+  int rsize = block->size - (THEAD + size); 
   block->size = rsize; 
 
-  struct head *splt = after(block);
+  struct thead *splt = after(block);
   splt->bsize = block->size;
   splt->bfree = block->free;
   splt->size = size;
   splt->free = TRUE;
   
-  struct head *aft = after(splt);
+  struct thead *aft = after(splt);
   aft->bsize = splt->size;
   aft->bfree = splt->free;
+  
+  splt = (struct head*)splt;
 
-  insert(splt);
+  insert(splt);  
 
   return splt;
 }
@@ -82,14 +92,14 @@ struct head *new() {
   }
 
   /* make room for head and dummy */
-  uint size = ARENA - 2*HEAD;
+  uint size = ARENA - 2*THEAD;
   
   new->bfree = FALSE;
   new->bsize = 0;
   new->free= TRUE;
   new->size = size;
   
-  struct head *sentinel = after(new);
+  struct thead *sentinel = after(new);
 
  /* only touch the status fields */
   sentinel->bfree = TRUE;
@@ -149,10 +159,9 @@ struct head *find(int size){
 
   do{
 
-      if (iterator->size == size){
+      if (iterator->size == size)
           return iterator;
-     }
-
+     
       if (iterator->size >= LIMIT(size))   
          return split(iterator, size);
        
@@ -160,8 +169,7 @@ struct head *find(int size){
 
   }while(iterator !=  NULL);
 
-  return NULL;
-  
+  return NULL;  
 }
 
 void *dalloc(size_t request) {
@@ -174,33 +182,37 @@ void *dalloc(size_t request) {
 
   struct head *taken = find(size);
 
-  if (taken == NULL)
-    return NULL;
-  else if(taken == flist && countFlist() == 1)
-    return NULL;
-  else{
-    detach(taken);
-    taken->free = FALSE;
-    after(taken)->bfree = FALSE;
-    sanity();
-    return HIDE(taken);
-  }
+
+
+    if (taken == NULL)
+        return NULL;
+    else if(taken == flist && countFlist() == 1)
+        return NULL;
+    else{
+        detach(taken);
+        taken = (struct thead*)taken;
+        taken->free = FALSE;
+        after(taken)->bfree = FALSE;
+        sanity();
+        return HIDE(taken);
+    }
 }
 
-struct head *merge(struct head *block) {
+struct thead *merge(struct thead *block) {
 
+    
   assert(block->free);
-  struct head *aft = after(block);
+  struct thead *aft = after(block);
 
   
   if(block->bfree) {
     
-    struct head *bef = before(block);
+    struct thead *bef = before(block);
     assert(bef->free);
 
     assert(block->bsize == bef->size);
 
-    bef->size += block->size + HEAD;
+    bef->size += block->size + THEAD;
 
     aft->bsize = bef->size;
 
@@ -212,7 +224,7 @@ struct head *merge(struct head *block) {
     
   if(aft->free) {
       assert(aft->free);
-      block->size = block->size + aft->size + HEAD;
+      block->size = block->size + aft->size + THEAD;
       after(aft)->bsize = block->size; 
       after(aft)->bfree = TRUE;     
       detach(aft);
@@ -227,7 +239,7 @@ void dfree(void *memory) {
 
      struct head* iterator = flist;
     
-     struct head *block = MAGIC(memory);
+     struct thead *block = MAGIC(memory);
 
      do{
         if (block == iterator){
@@ -236,13 +248,13 @@ void dfree(void *memory) {
         }
         iterator = iterator->next;
 
-     }while (iterator != NULL);
+    }while (iterator != NULL);
     
     block->free = TRUE;
-    struct head *aft = after(block);
+    struct thead *aft = after(block);
     aft->bfree = TRUE;
 
-    //block = merge(block);
+    block = (struct head*)merge(block);
 
     assert(block->free);
   
@@ -250,7 +262,7 @@ void dfree(void *memory) {
     
     insert(block);
   }
-
+    
   sanity();
 
   return;
@@ -291,11 +303,15 @@ void printArena(){
   }while(iterator->size != 0);
 
   printf("Index %d, address %p, bfree %d, bsize %d, size %d\n",index, iterator, iterator->bfree, iterator->bsize, iterator->size);
+
 }
 
 void sanity(){
 
   struct head *iterator = flist;
+
+  if(flist == NULL)
+    printArena();
 
   assert(flist->prev == NULL);
 
@@ -306,14 +322,16 @@ void sanity(){
     iterator = iterator->next;
   }
 
-  iterator = arena;
-  struct head *next;
+  iterator = (struct thead*)arena;
+  struct thead *next;
 
   while (iterator->size != 0){
 
     next = after(iterator);
 
-    
+     if(!(iterator->size == next->bsize)){
+         printArena();
+    }
     assert(iterator->size == next->bsize);
     assert(iterator->free == next->bfree);
     assert((iterator->size % ALIGN) == 0);
@@ -359,6 +377,8 @@ double countAverageBlockSize(){
 
 void init(){
   flist = new();
+  flist->next = NULL;
+  flist->prev = NULL;
 }
 
 
@@ -367,9 +387,9 @@ void init(){
 
 
 
-#define MINI 8
+#define MINI 16
 #define MAX 1024
-#define REQUESTS 10000
+#define REQUESTS 1000
 
 int *memoryList[REQUESTS];
 int TOP = -1;
@@ -437,8 +457,8 @@ void bench(int *samples){
           memory = dalloc(samples[i]);
           push(memory);
        }
-       printf("%d %.2f\n", countFlist(), countAverageBlockSize());
-    }
+        printf("%d %.2f\n", countFlist(), countAverageBlockSize());
+     }
 }
 
 
@@ -446,10 +466,10 @@ void bench(int *samples){
 int main(){
 
     init();
+
     int req[REQUESTS]; 
     requests(req);  
     bench(req);
    
-         
     return 0;
 }
