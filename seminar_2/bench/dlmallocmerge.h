@@ -1,5 +1,5 @@
-#ifndef DLMALLOC
-#define DLMALLOC
+#ifndef DLMALLOCMERGE
+#define DLMALLOCMERGE
 
 #include <stddef.h>
 
@@ -8,6 +8,5 @@ void dfree(void *memory);
 void init();
 int countFlist();
 double countAverageBlockSize();
-void printFlist();
 
 #endif
