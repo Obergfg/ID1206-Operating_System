@@ -4,7 +4,7 @@ set terminal png
 set output "time.png"
 set datafile separator whitespace
 set key right top
-set title "Execution time comparison between the basic and smaller header"
+#set title "Execution time comparison between the basic and smaller header"
 set xlabel "execution number"
 set ylabel "execution time(S)"
 
