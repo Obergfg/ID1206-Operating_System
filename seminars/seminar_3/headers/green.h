@@ -10,14 +10,9 @@ typedef struct green_t {
   int zombie;
 } green_t;
 
-
-typedef struct{
-  green_t* first;
-  green_t* last;
-}queue;
-
-typedef struct{
-  queue* cond;
+typedef struct green_cond_t{
+ green_t *first;
+ green_t *last;
 }green_cond_t;
 
 int green_create(green_t *thread, void *(*fun)(void*), void *arg);

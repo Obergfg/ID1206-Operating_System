@@ -10,9 +10,8 @@
 static ucontext_t main_cntx = {0};
 static green_t main_green = {&main_cntx, NULL, NULL, NULL, NULL, NULL, FALSE};
 static green_t *running = &main_green;
-static green_t *first_ready = NULL;
-static green_t *last_ready = NULL;
-static queue ready = {NULL, NULL};
+static green_t *ready_first = NULL;
+static green_t *ready_last = NULL;
 
 static void init() __attribute__((constructor));
 
@@ -21,35 +20,34 @@ void init()
     getcontext(&main_cntx);
 }
 
-void add(green_t *new)
+void add_ready(green_t *new)
 {
 
     if (!new)
         return;
 
-    if (!first_ready)
-         first_ready = last_ready = new;
+    if (!ready_first)
+        ready_first = ready_last = new;
     else
-    {
-        last_ready->next = new;
-        last_ready = new;
-    }
+        ready_last = ready_last->next = new;
 }
 
-green_t *get_first()
+green_t *get_ready()
 {
 
-    if (!first_ready)
+    if (!ready_first)
         return NULL;
 
-    green_t *ready = first_ready;
+    green_t *thread = ready_first;
 
-    if(!first_ready->next)
-        first_ready = last_ready;
+    if (thread == ready_last)
+        ready_first = ready_last = NULL;
     else
-        first_ready = first_ready->next;
+        ready_first = ready_first->next;
 
-    return ready;
+    thread->next = NULL;
+
+    return thread;
 }
 
 void green_thread()
@@ -59,12 +57,12 @@ void green_thread()
     void *result = (*this->fun)(this->arg);
 
     if (this->join)
-        add(this->join);
+        add_ready(this->join);
 
     this->join = NULL;
     this->retval = result;
     this->zombie = TRUE;
-    green_t *next = get_first();
+    green_t *next = get_ready();
     running = next;
     setcontext(next->context);
 }
@@ -89,7 +87,7 @@ int green_create(green_t *new, void *(*fun)(void *), void *arg)
     new->retval = NULL;
     new->zombie = FALSE;
 
-    add(new);
+    add_ready(new);
 
     return 0;
 }
@@ -98,9 +96,9 @@ int green_yield()
 {
     green_t *susp = running;
 
-    add(susp);
+    add_ready(susp);
 
-    green_t *next = get_first();
+    green_t *next = get_ready();
     running = next;
     swapcontext(susp->context, next->context);
 
@@ -114,17 +112,41 @@ int green_join(green_t *thread, void **res)
     {
         green_t *susp = running;
         thread->join = susp;
-        green_t *next = get_first();
-        running = next;
-        swapcontext(susp->context, next->context);
+        running = get_ready();
+        swapcontext(susp->context, running->context);
     }
-    // collect result
+
     if (res)
         *(res) = thread->retval;
 
-    // free context
     free(thread->context->uc_stack.ss_sp);
     free(thread->context);
 
     return 0;
+}
+
+void green_cond_init(green_cond_t *cond)
+{
+    cond->first = cond->last = NULL;
+}
+
+void green_cond_wait(green_cond_t *cond)
+{
+    if(!cond->first)
+        cond->first = cond->last = running;
+    else
+        cond->last = cond->last->next = running;
+
+    green_t *susp = running;
+    running = get_ready();
+    swapcontext(susp->context, running->context);
+}
+
+void green_cond_signal(green_cond_t *cond)
+{
+    if(!cond->first)
+        return;
+
+    add_ready(cond->first);
+    cond->first = cond->first->next;
 }
