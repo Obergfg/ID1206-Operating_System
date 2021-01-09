@@ -2,8 +2,9 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <time.h>
 
-#define MAX 10000
+#define MAX 100
 
 typedef struct cell {
   int val;
@@ -85,7 +86,7 @@ int main(int argc, char *argv[]) {
   int n = atoi(argv[2]);  
   int inc = (atoi(argv[1]) / n);
 
-  printf("%d threads doing %d operations each\n", n, inc);
+  //printf("%d threads doing %d operations each\n", n, inc);
   
   pthread_mutex_init(&mutex, NULL);
 
@@ -117,7 +118,7 @@ int main(int argc, char *argv[]) {
   long wall_nsec = t_stop.tv_nsec - t_start.tv_nsec;
   long wall_msec = (wall_sec *1000) + (wall_nsec / 1000000);
   
-  printf("done in %ld ms\n", wall_msec);
+  printf("%ld\n", wall_msec);
 
   // printf("The created list\n");
   // printlist(global);

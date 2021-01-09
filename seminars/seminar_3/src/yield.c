@@ -4,12 +4,12 @@
 void *test(void *arg)
 {
     int i = *(int *)arg;
-    int loop = 4;
+    int loops = 4;
 
-    while (loop > 0)
+    while (loops > 0)
     {
-        printf("thread %d: %d\n", i, loop);
-        loop--;
+        printf("thread %d: %d\n", i, loops);
+        loops--;
         green_yield();
     }
 }

@@ -3,17 +3,21 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <time.h>
+#include "green.h"
 
 #define MAX 10000
 
 typedef struct cell {
   int val;
   struct cell *next;
-  pthread_mutex_t mutex;
+  green_mutex_t mutex;
 } cell;
 
-cell sentinel = {MAX, NULL, PTHREAD_MUTEX_INITIALIZER};
-cell dummy = {-1, &sentinel, PTHREAD_MUTEX_INITIALIZER};
+green_mutex_t mutex_sentinel;
+green_mutex_t mutex_dummy;
+
+cell sentinel = {MAX, NULL, NULL};
+cell dummy = {-1, &sentinel, NULL};
 cell *global = &dummy;
 
 typedef struct args {
@@ -25,18 +29,18 @@ typedef struct args {
 void toggle(cell *lst, int r) {
 
   cell *prev = lst;
-  pthread_mutex_lock(&prev->mutex); 
+  green_mutex_lock(&prev->mutex); 
 
   cell *this = prev->next;
-  pthread_mutex_lock(&this->mutex);
+  green_mutex_lock(&this->mutex);
 
   cell *removed = NULL;
 
   while(this->val < r) {
-    pthread_mutex_unlock(&prev->mutex);      
+    green_mutex_unlock(&prev->mutex);      
     prev = this;
     this = this->next;
-    pthread_mutex_lock(&this->mutex);      
+    green_mutex_lock(&this->mutex);      
   }
 
   if(this->val == r) {
@@ -46,12 +50,12 @@ void toggle(cell *lst, int r) {
     cell *new = malloc(sizeof(cell));
     new->val = r;
     new->next = this;
-    pthread_mutex_init(&new->mutex, NULL);
+    green_mutex_init(&new->mutex);
     prev->next = new;
   }
 
-   pthread_mutex_unlock(&prev->mutex);      
-   pthread_mutex_unlock(&this->mutex);   
+   green_mutex_unlock(&prev->mutex);      
+   green_mutex_unlock(&this->mutex);   
 
    if(removed != NULL) 
      free(removed);
@@ -93,6 +97,11 @@ int main(int argc, char *argv[]) {
 
  // printf("%d threads doing %d operations each\n", n, inc);
   
+  green_mutex_init(&mutex_sentinel);
+  green_mutex_init(&mutex_dummy);
+
+  sentinel.mutex = mutex_sentinel;
+  dummy.mutex = mutex_dummy;
 
   args *thra = malloc(n * sizeof(args));
 
@@ -102,18 +111,18 @@ int main(int argc, char *argv[]) {
     thra[i].list = global;
   }
 
-  pthread_t *thrt = malloc(n * sizeof(pthread_t));  
+  green_t *thrt = malloc(n * sizeof(green_t));  
 
   struct timespec t_start, t_stop;
 
   clock_gettime(CLOCK_MONOTONIC_COARSE, &t_start);
 
   for(int i =0; i < n; i++) {
-    pthread_create(&thrt[i], NULL, bench, &thra[i]);
+    green_create(&thrt[i], bench, &thra[i]);
   }
 
   for(int i =0; i < n; i++) {
-    pthread_join(thrt[i], NULL);
+    green_join(&thrt[i], NULL);
   }
 
   clock_gettime(CLOCK_MONOTONIC_COARSE, &t_stop);
