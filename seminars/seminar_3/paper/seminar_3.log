@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2021.1.7)  10 JAN 2021 20:36
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2021.1.7)  11 JAN 2021 09:57
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -965,27 +965,27 @@ Package caption Info: End \AtBeginDocument code.
 \tf@toc=\write6
 \openout6 = `seminar_3.toc'.
 
- [2] [3]
+ [2] [3] [4]
 PGFPlots: reading {data/g1l.dat}
 PGFPlots: reading {data/g1s.dat}
 PGFPlots: reading {data/p1s.dat}
 PGFPlots: reading {data/p1l.dat}
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <7> on input line 87.
+(Font)              <7> on input line 98.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <5> on input line 87.
- [4]
+(Font)              <5> on input line 98.
+ [5]
 PGFPlots: reading {data/gcl.dat}
 PGFPlots: reading {data/gcs.dat}
- [5]
+ [6]
 PGFPlots: reading {data/pcs.dat}
 PGFPlots: reading {data/pcl.dat}
- [6] [7]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 177.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 177.
+ [7]
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 184.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 184.
  (./seminar_3.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 177.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 177.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 184.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 184.
 Package rerunfilecheck Info: File `seminar_3.out' has not changed.
 (rerunfilecheck)             Checksum: 9820C6DBCDBC14DEDCA24BE55BE68801;266.
 Package logreq Info: Writing requests to 'seminar_3.run.xml'.
@@ -995,11 +995,11 @@ Package logreq Info: Writing requests to 'seminar_3.run.xml'.
 Here is how much of TeX's memory you used:
  34899 strings out of 483140
  829311 string characters out of 5965152
- 1562316 words of memory out of 5000000
+ 1561316 words of memory out of 5000000
  49386 multiletter control sequences out of 15000+600000
  534455 words of font info for 31 fonts, out of 8000000 for 9000
  36 hyphenation exceptions out of 8191
- 76i,20n,127p,1468b,2349s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 76i,20n,127p,1251b,2349s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></us
 r/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/shar
 e/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx9.pfb></usr/share/texli
@@ -1009,7 +1009,7 @@ mf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist
 type1/public/amsfonts/cm/cmr17.pfb></usr/share/texlive/texmf-dist/fonts/type1/p
 ublic/amsfonts/cm/cmr5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/am
 sfonts/cm/cmr9.pfb>
-Output written on seminar_3.pdf (7 pages, 132706 bytes).
+Output written on seminar_3.pdf (7 pages, 132874 bytes).
 PDF statistics:
  117 PDF objects out of 1000 (max. 8388607)
  98 compressed objects within 1 object stream
